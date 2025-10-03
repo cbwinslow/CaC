@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+CMD=${1:-}
+INSTALL_ROOT="/etc/cbw-cac"
+DATA_DIR="/var/lib/cbw-cac"
+CLOUD_INIT_OUT="${INSTALL_ROOT}/cloud-init.yaml"
+CONF_FILE="${INSTALL_ROOT}/cbw-cac.conf"
+usage(){ cat <<U
+cbw-cacctl — control CLI
+Usage:
+  cbw-cacctl show
+  cbw-cacctl rescan
+  cbw-cacctl state
+  cbw-cacctl follow
+  cbw-cacctl config
+U
+}
+case "$CMD" in
+  show) sudo cat "$CLOUD_INIT_OUT" || true ;;
+  state) sudo jq . "${DATA_DIR}/state.json" 2>/dev/null || sudo cat "${DATA_DIR}/state.json" ;;
+  follow) sudo tail -f "${DATA_DIR}/commands.jsonl" ;;
+  rescan) sudo /usr/bin/env python3 - <<'PY'
+p="/var/lib/cbw-cac/commands.jsonl"
+with open(p,'a',encoding='utf-8') as f: f.write('\n')
+print("rescan appended")
+PY
+  ;;
+  config) sudo sed -n '1,200p' "${CONF_FILE}" 2>/dev/null || echo "(no config)" ;;
+  *) usage ;;
+esac
